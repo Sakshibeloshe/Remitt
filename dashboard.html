@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Regulator Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+    .btn { padding: 10px 20px; margin: 10px; background: #2196F3; color: white; border: none; cursor: pointer; }
+    .btn:hover { background: #1976D2; }
+  </style>
+</head>
+<body>
+  <h1>📊 Regulator Dashboard</h1>
+  <button class="btn" onclick="loadLedger()">🔄 Refresh Ledger</button>
+  <button class="btn" onclick="loadAlerts()">🚨 Refresh Alerts</button>
+  <pre id="output">No data yet...</pre>
+
+  <script>
+    function loadLedger() {
+      fetch('/ledger')
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('output').textContent = "Ledger:\n" + JSON.stringify(data, null, 2);
+        });
+    }
+
+    function loadAlerts() {
+      fetch('/alerts')
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('output').textContent = "Alerts:\n" + JSON.stringify(data, null, 2);
+        });
+    }
+  </script>
+</body>
+</html>

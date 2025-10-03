@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Remittance Corridor Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .screen { display: none; }
+    .active { display: block; }
+    .btn { padding: 10px 20px; margin: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+    .btn:hover { background: #45a049; }
+    #qrBox, #receiverMsg { margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <h1>🌍 Remittance Corridor Demo</h1>
+
+  <!-- Sender Screen -->
+  <div id="senderScreen" class="screen active">
+    <h2>Sender</h2>
+    <label>Sender Name: </label><input id="senderName"><br><br>
+    <label>Receiver Name: </label><input id="receiverName"><br><br>
+    <label>Amount (USD): </label><input id="amount" type="number"><br><br>
+    <button class="btn" onclick="generateTxn()">Send Money</button>
+    <div id="qrBox"></div>
+    <button class="btn" onclick="nextScreen()">➡ Go to Receiver</button>
+  </div>
+
+  <!-- Receiver Screen -->
+  <div id="receiverScreen" class="screen">
+    <h2>Receiver</h2>
+    <div id="receiverMsg">Waiting for transaction...</div>
+    <button class="btn" onclick="goToDashboard()">📊 Go to Dashboard</button>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboardScreen" class="screen">
+    <h2>📊 Regulator Dashboard</h2>
+    <h3>Ledger</h3>
+    <pre id="ledgerBox">No transactions yet...</pre>
+    <h3>Alerts</h3>
+    <pre id="alertBox">No alerts yet...</pre>
+    <button class="btn" onclick="goHome()">🏠 Back to Home</button>
+  </div>
+
+  <script>
+    let latestTxn = null;
+    let ledger = [];
+    let alerts = [];
+
+    function generateTxn() {
+      const sender = document.getElementById('senderName').value;
+      const receiver = document.getElementById('receiverName').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+
+      if (!sender || !receiver || isNaN(amount)) {
+        alert("⚠ Please fill all fields!");
+        return;
+      }
+
+      // ✅ USD to INR conversion (fixed demo rate)
+      const rate = 83.2; 
+      const inrAmount = (amount * rate).toFixed(2);
+
+      // Create transaction object
+      latestTxn = {
+        txnId: "TXN" + Math.floor(Math.random() * 1000000),
+        sender,
+        receiver,
+        amountUSD: amount,
+        amountINR: inrAmount,
+        timestamp: new Date().toLocaleString()
+      };
+
+      // Push to ledger
+      ledger.push(latestTxn);
+
+      // Check alert condition (e.g., > $5000)
+      if (amount > 5000) {
+        alerts.push(`🚨 Large Transaction Alert: ${sender} sent $${amount} (${inrAmount} INR) to ${receiver}`);
+      }
+
+      // Show confirmation under sender screen
+      document.getElementById('qrBox').innerHTML = `
+        ✅ Transaction Created!<br><br>
+        <b>Txn ID:</b> ${latestTxn.txnId}<br>
+        <b>From:</b> ${latestTxn.sender}<br>
+        <b>To:</b> ${latestTxn.receiver}<br>
+        <b>Amount:</b> $${latestTxn.amountUSD} → ₹${latestTxn.amountINR}<br>
+        <b>Time:</b> ${latestTxn.timestamp}
+      `;
+    }
+
+    function nextScreen() {
+      document.getElementById('senderScreen').classList.remove('active');
+      document.getElementById('receiverScreen').classList.add('active');
+
+      if (latestTxn) {
+        document.getElementById('receiverMsg').innerHTML = `
+          🎉 <b>Transaction Received!</b><br><br>
+          <b>From:</b> ${latestTxn.sender}<br>
+          <b>To:</b> ${latestTxn.receiver}<br>
+          <b>Received:</b> ₹${latestTxn.amountINR}<br>
+          <b>(~$${latestTxn.amountUSD})</b><br>
+          <b>Txn ID:</b> ${latestTxn.txnId}<br>
+          <b>Time:</b> ${latestTxn.timestamp}
+        `;
+      }
+    }
+
+    function goToDashboard() {
+      document.getElementById('receiverScreen').classList.remove('active');
+      document.getElementById('dashboardScreen').classList.add('active');
+
+      // Update dashboard
+      document.getElementById('ledgerBox').textContent = JSON.stringify(ledger, null, 2);
+      document.getElementById('alertBox').textContent = alerts.length ? alerts.join("\n") : "No alerts yet...";
+    }
+
+    function goHome() {
+      document.getElementById('dashboardScreen').classList.remove('active');
+      document.getElementById('senderScreen').classList.add('active');
+    }
+  </script>
+</body>
+</html>
