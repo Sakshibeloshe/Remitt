@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-
+const { submitRemittance, queryParticipant, getAllTransactions } = require('./fabric-client');
 const app = express();
 const PORT = 3000;
 
@@ -19,10 +19,18 @@ app.get("/", (req, res) => {
   res.send("✅ Remittance Backend is running! Use /transaction, /ledger, /alerts");
 });
 
-// POST /transaction → create a new transaction
-app.post("/transaction", (req, res) => {
-  console.log("📩 Incoming request body:", req.body); // Debug log
+// GET /participant/:id -> Read from Blockchain World State
+app.get("/participant/:id", async (req, res) => {
+  try {
+    const participantData = await queryParticipant(req.params.id);
+    res.json(participantData);
+  } catch (error) {
+    res.status(404).json({ error: "Participant not found on blockchain" });
+  }
+});
 
+// POST /transaction → create a new transaction
+app.post("/transaction", async (req, res) => {
   const { sender, receiver, amount } = req.body;
 
   if (!sender || !receiver || !amount) {
@@ -30,32 +38,42 @@ app.post("/transaction", (req, res) => {
   }
 
   const txnId = `txn_${Date.now()}`;
-  const inrAmount = amount * 82; // USD → INR mock conversion
+  const amountUSD = parseFloat(amount);
+  const inrAmount = amountUSD * 92; // Real-world FX plugin could go here
 
-  const txn = {
-    id: txnId,
-    sender,
-    receiver,
-    usd: amount,
-    inr: inrAmount,
-    status: "confirmed",
-    timestamp: new Date().toISOString(),
-  };
+  try {
+    // ⛓️ Send it to the Blockchain!
+    await submitRemittance(txnId, sender, receiver, amountUSD);
 
-  transactions.push(txn);
-
-  res.json({ txnId, status: txn.status, inrAmount });
+    res.json({ 
+      txnId, 
+      status: "Verified & Committed to Blockchain", 
+      inrAmount 
+    });
+  } catch (error) {
+    // If KYC fails, the blockchain throws an error and the transaction is BLOCKED
+    console.error("Blockchain rejected transaction:", error.message);
+    res.status(500).json({ error: "Blockchain Rejected: " + error.message });
+  }
 });
 
-// GET /ledger → return all transactions
-app.get("/ledger", (req, res) => {
-  res.json(transactions);
+app.get("/ledger", async (req, res) => {
+  try {
+      const txns = await getAllTransactions();
+      res.json(txns);
+  } catch (error) {
+      res.status(500).json({ error: error.message });
+  }
 });
 
-// GET /alerts → suspicious transactions (> $10,000)
-app.get("/alerts", (req, res) => {
-  const flagged = transactions.filter(t => t.usd > 10000);
-  res.json(flagged);
+app.get("/alerts", async (req, res) => {
+    try {
+        const txns = await getAllTransactions();
+        const flagged = txns.filter(t => t.amlFlagged === true);
+        res.json(flagged);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // ===== Start Server =====
