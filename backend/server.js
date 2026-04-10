@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const { submitRemittance, queryParticipant, getAllTransactions } = require('./fabric-client');
 const app = express();
 const PORT = 3000;
@@ -8,16 +9,13 @@ const PORT = 3000;
 app.use(cors());
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, '../frontend')));
 
-// ===== In-memory Ledger (demo only) =====
-let transactions = [];
-
-// ===== Routes =====
-
-// Root check
+// 
+// Serve the frontend on the root endpoint
 app.get("/", (req, res) => {
-  res.send("✅ Remittance Backend is running! Use /transaction, /ledger, /alerts");
-});
+  res.sendFile(path.join(__dirname, '../frontend/index.html'))});
 
 // GET /participant/:id -> Read from Blockchain World State
 app.get("/participant/:id", async (req, res) => {
