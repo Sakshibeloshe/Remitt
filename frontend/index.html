@@ -3,12 +3,24 @@
 <head>
   <title>Remittance Corridor Demo</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .screen { display: none; }
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f7f6; }
+    .screen { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto; }
     .active { display: block; }
-    .btn { padding: 10px 20px; margin: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; }
-    .btn:hover { background: #45a049; }
-    #qrBox, #receiverMsg { margin-top: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background: #f9f9f9; }
+    h1 { text-align: center; color: #333; }
+    label { font-weight: bold; }
+    input { width: 100%; padding: 8px; margin: 8px 0 20px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .btn { padding: 10px 20px; margin: 5px 0; background: #2196F3; color: white; border: none; cursor: pointer; border-radius: 4px; width: 100%; font-size: 16px; }
+    .btn:hover { background: #1976D2; }
+    .btn-secondary { background: #607D8B; }
+    .btn-secondary:hover { background: #455A64; }
+    .notes { font-size: 0.9em; color: #666; margin-bottom: 15px; }
+    #qrBox, #receiverMsg, #errorBox { margin-top: 20px; padding: 15px; border-radius: 6px; display: none; }
+    #qrBox { background: #e8f5e9; border: 1px solid #c8e6c9; color: #2e7d32; }
+    #errorBox { background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; }
+    pre { background: #eee; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 13px; }
+    .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; }
+    .status-completed { background-color: #4CAF50; }
+    .status-held { background-color: #F44336; }
   </style>
 </head>
 <body>
@@ -16,109 +28,119 @@
 
   <!-- Sender Screen -->
   <div id="senderScreen" class="screen active">
-    <h2>Sender</h2>
-    <label>Sender Name: </label><input id="senderName"><br><br>
-    <label>Receiver Name: </label><input id="receiverName"><br><br>
-    <label>Amount (USD): </label><input id="amount" type="number"><br><br>
-    <button class="btn" onclick="generateTxn()">Send Money</button>
+    <h2>Make a Transfer</h2>
+    <p class="notes"><b>Test Accounts:</b> alice_01, bob_02, charlie_03 (KYC Failed)</p>
+    
+    <label>Sender ID: </label>
+    <input id="senderName" placeholder="e.g. alice_01" value="alice_01">
+    
+    <label>Receiver ID: </label>
+    <input id="receiverName" placeholder="e.g. bob_02" value="bob_02">
+    
+    <label>Amount (USD): </label>
+    <input id="amount" type="number" placeholder="amount in USD">
+    
+    <button class="btn" onclick="generateTxn()">Send Money via Blockchain</button>
+    
     <div id="qrBox"></div>
-    <button class="btn" onclick="nextScreen()">➡ Go to Receiver</button>
-  </div>
-
-  <!-- Receiver Screen -->
-  <div id="receiverScreen" class="screen">
-    <h2>Receiver</h2>
-    <div id="receiverMsg">Waiting for transaction...</div>
-    <button class="btn" onclick="goToDashboard()">📊 Go to Dashboard</button>
+    <div id="errorBox"></div>
+    
+    <button class="btn btn-secondary" onclick="goToDashboard()" style="margin-top: 20px;">📊 Go to Regulator Dashboard</button>
   </div>
 
   <!-- Dashboard -->
   <div id="dashboardScreen" class="screen">
     <h2>📊 Regulator Dashboard</h2>
-    <h3>Ledger</h3>
-    <pre id="ledgerBox">No transactions yet...</pre>
-    <h3>Alerts</h3>
-    <pre id="alertBox">No alerts yet...</pre>
-    <button class="btn" onclick="goHome()">🏠 Back to Home</button>
+    <button class="btn" onclick="fetchLedger()">🔄 Refresh Blockchain Ledger</button>
+    
+    <h3>Suspicious Activity / AML Holds</h3>
+    <pre id="alertBox">Loading...</pre>
+
+    <h3>Complete Immutable Ledger</h3>
+    <pre id="ledgerBox">Loading...</pre>
+    
+    <button class="btn btn-secondary" onclick="goHome()">🏠 Back to Make Transfer</button>
   </div>
 
   <script>
-    let latestTxn = null;
-    let ledger = [];
-    let alerts = [];
+    const API_URL = "http://localhost:3000";
 
-    function generateTxn() {
+    async function generateTxn() {
       const sender = document.getElementById('senderName').value;
       const receiver = document.getElementById('receiverName').value;
       const amount = parseFloat(document.getElementById('amount').value);
 
+      const qrBox = document.getElementById('qrBox');
+      const errorBox = document.getElementById('errorBox');
+      qrBox.style.display = 'none';
+      errorBox.style.display = 'none';
+
       if (!sender || !receiver || isNaN(amount)) {
-        alert("⚠ Please fill all fields!");
+        errorBox.innerHTML = "⚠ Please fill all fields!";
+        errorBox.style.display = 'block';
         return;
       }
 
-      // ✅ USD to INR conversion (fixed demo rate)
-      const rate = 83.2; 
-      const inrAmount = (amount * rate).toFixed(2);
+      // Call your real backend!
+      try {
+        const response = await fetch(`${API_URL}/transaction`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sender, receiver, amount })
+        });
 
-      // Create transaction object
-      latestTxn = {
-        txnId: "TXN" + Math.floor(Math.random() * 1000000),
-        sender,
-        receiver,
-        amountUSD: amount,
-        amountINR: inrAmount,
-        timestamp: new Date().toLocaleString()
-      };
+        const data = await response.json();
 
-      // Push to ledger
-      ledger.push(latestTxn);
-
-      // Check alert condition (e.g., > $5000)
-      if (amount > 5000) {
-        alerts.push(`🚨 Large Transaction Alert: ${sender} sent $${amount} (${inrAmount} INR) to ${receiver}`);
+        if (response.ok) {
+          qrBox.style.display = 'block';
+          qrBox.innerHTML = `
+            ✅ <b>Transaction Successfully Committed to Fabric!</b><br><br>
+            <b>Txn ID:</b> ${data.txnId}<br>
+            <b>Status:</b> ${data.status}<br>
+            <b>Resulting INR:</b> ₹${data.inrAmount}
+          `;
+        } else {
+          errorBox.style.display = 'block';
+          errorBox.innerHTML = `🚨 <b>Blockchain Rejection:</b><br>${data.error}`;
+        }
+      } catch (err) {
+        errorBox.style.display = 'block';
+        errorBox.innerHTML = `🚨 <b>Network Error:</b> Is your node server running?`;
       }
-
-      // Show confirmation under sender screen
-      document.getElementById('qrBox').innerHTML = `
-        ✅ Transaction Created!<br><br>
-        <b>Txn ID:</b> ${latestTxn.txnId}<br>
-        <b>From:</b> ${latestTxn.sender}<br>
-        <b>To:</b> ${latestTxn.receiver}<br>
-        <b>Amount:</b> $${latestTxn.amountUSD} → ₹${latestTxn.amountINR}<br>
-        <b>Time:</b> ${latestTxn.timestamp}
-      `;
     }
 
-    function nextScreen() {
-      document.getElementById('senderScreen').classList.remove('active');
-      document.getElementById('receiverScreen').classList.add('active');
+    async function fetchLedger() {
+      document.getElementById('ledgerBox').textContent = "Loading from blockchain...";
+      document.getElementById('alertBox').textContent = "Loading alerts...";
 
-      if (latestTxn) {
-        document.getElementById('receiverMsg').innerHTML = `
-          🎉 <b>Transaction Received!</b><br><br>
-          <b>From:</b> ${latestTxn.sender}<br>
-          <b>To:</b> ${latestTxn.receiver}<br>
-          <b>Received:</b> ₹${latestTxn.amountINR}<br>
-          <b>(~$${latestTxn.amountUSD})</b><br>
-          <b>Txn ID:</b> ${latestTxn.txnId}<br>
-          <b>Time:</b> ${latestTxn.timestamp}
-        `;
+      try {
+        // Fetch full ledger
+        const ledgerRes = await fetch(`${API_URL}/ledger`);
+        const ledgerData = await ledgerRes.json();
+        document.getElementById('ledgerBox').textContent = JSON.stringify(ledgerData, null, 2);
+
+        // Fetch alerts logic
+        const alertRes = await fetch(`${API_URL}/alerts`);
+        const alertData = await alertRes.json();
+        document.getElementById('alertBox').textContent = alertData.length ? JSON.stringify(alertData, null, 2) : "✅ No AML alerts.";
+
+      } catch (err) {
+        document.getElementById('ledgerBox').textContent = "Error fetching blockchain data.";
+        document.getElementById('alertBox').textContent = "";
       }
     }
 
     function goToDashboard() {
-      document.getElementById('receiverScreen').classList.remove('active');
+      document.getElementById('senderScreen').classList.remove('active');
       document.getElementById('dashboardScreen').classList.add('active');
-
-      // Update dashboard
-      document.getElementById('ledgerBox').textContent = JSON.stringify(ledger, null, 2);
-      document.getElementById('alertBox').textContent = alerts.length ? alerts.join("\n") : "No alerts yet...";
+      fetchLedger();
     }
 
     function goHome() {
       document.getElementById('dashboardScreen').classList.remove('active');
       document.getElementById('senderScreen').classList.add('active');
+      document.getElementById('qrBox').style.display = 'none';
+      document.getElementById('errorBox').style.display = 'none';
     }
   </script>
 </body>

@@ -1,0 +1,40 @@
+# --- Fabric Specifics ---
+# Generated crypto material
+crypto-config/
+organizations/fabric-ca/
+organizations/ordererOrganizations/
+organizations/peerOrganizations/
+
+# Generated channel artifacts
+channel-artifacts/*.block
+channel-artifacts/*.tx
+system-genesis-block/
+
+# Binaries and Config
+bin/
+config/
+
+# --- Development Environment ---
+.env
+*.log
+.DS_Store
+
+# --- Language Specifics ---
+# Node.js
+node_modules/
+npm-debug.log
+.nyc_output/
+
+# Go
+vendor/
+*.out
+*.test
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Hyperledger Fabric Binaries & Samples ---
+fabric-samples/
+install-fabric.sh
